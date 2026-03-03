@@ -1,21 +1,40 @@
 "use client";
 
-import { Suspense, useState, useMemo } from "react";
+import { Suspense, useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { workspaces } from "@/data/spaces";
+import { workspaces as staticWorkspaces } from "@/data/spaces";
+import { cities as staticCities } from "@/data/cities";
+import { getCities, getWorkSpaces } from "@/lib/api";
 import SpaceCard from "@/components/spaces/SpaceCard";
 import SpaceFilter from "@/components/spaces/SpaceFilter";
 import type { SpaceType, SpaceSortOption } from "@/components/spaces/SpaceFilter";
+import type { CityData } from "@/types/city";
+import type { WorkSpace } from "@/data/spaces";
 
 function SpacesContent() {
   const searchParams = useSearchParams();
   const initialCity = searchParams.get("city") ?? "all";
+
+  const [cities, setCities] = useState<CityData[]>(staticCities);
+  const [allSpaces, setAllSpaces] = useState<WorkSpace[]>(staticWorkspaces);
+  const [loading, setLoading] = useState(true);
   const [selectedCity, setSelectedCity] = useState<string>(initialCity);
   const [selectedType, setSelectedType] = useState<SpaceType>("전체");
   const [sortOption, setSortOption] = useState<SpaceSortOption>("rating");
 
+  useEffect(() => {
+    Promise.all([
+      getCities()
+        .then((data) => setCities(data.cities))
+        .catch(() => setCities(staticCities)),
+      getWorkSpaces()
+        .then((data) => setAllSpaces(data as unknown as WorkSpace[]))
+        .catch(() => setAllSpaces(staticWorkspaces)),
+    ]).finally(() => setLoading(false));
+  }, []);
+
   const filteredSpaces = useMemo(() => {
-    let result = [...workspaces];
+    let result = [...allSpaces];
 
     // 도시 필터
     if (selectedCity !== "all") {
@@ -42,13 +61,29 @@ function SpacesContent() {
     });
 
     return result;
-  }, [selectedCity, selectedType, sortOption]);
+  }, [allSpaces, selectedCity, selectedType, sortOption]);
+
+  if (loading) {
+    return (
+      <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="space-y-4">
+          <div className="h-10 w-64 animate-pulse rounded bg-muted" />
+          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-48 animate-pulse rounded-xl bg-muted" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <>
       {/* 필터 + 결과 */}
       <section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <SpaceFilter
+          cities={cities}
           selectedCity={selectedCity}
           onCityChange={setSelectedCity}
           selectedType={selectedType}

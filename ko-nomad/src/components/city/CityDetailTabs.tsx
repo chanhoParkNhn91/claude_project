@@ -4,14 +4,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ScoreTable from "@/components/city/ScoreTable";
 import CostBreakdown from "@/components/city/CostBreakdown";
 import ReviewList from "@/components/city/ReviewList";
-import type { CityData, Review } from "@/types/city";
+import type { CityData } from "@/types/city";
 
 interface CityDetailTabsProps {
   city: CityData;
-  reviews: Review[];
+  citySlug: string;
 }
 
-export default function CityDetailTabs({ city, reviews }: CityDetailTabsProps) {
+export default function CityDetailTabs({ city, citySlug }: CityDetailTabsProps) {
   return (
     <Tabs defaultValue="scores">
       <TabsList className="w-full md:w-auto">
@@ -29,7 +29,7 @@ export default function CityDetailTabs({ city, reviews }: CityDetailTabsProps) {
       </TabsContent>
 
       <TabsContent value="reviews" className="mt-4">
-        <ReviewList reviews={reviews} citySlug={city.slug} />
+        <ReviewList citySlug={citySlug} />
       </TabsContent>
     </Tabs>
   );

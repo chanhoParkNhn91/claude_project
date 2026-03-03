@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, ArrowLeftRight, Calculator, CloudSun, MapPin } from "lucide-react";
+import UserMenu from "@/components/auth/UserMenu";
 
 export default function Header() {
   return (
@@ -47,15 +48,7 @@ export default function Header() {
               생활비 계산기
             </Link>
           </Button>
-          <Button variant="ghost" size="sm">
-            로그인
-          </Button>
-          <Button
-            size="sm"
-            className="bg-[#FF6B6B] text-white hover:bg-[#FF5252]"
-          >
-            회원가입
-          </Button>
+          <UserMenu />
         </nav>
       </div>
     </header>

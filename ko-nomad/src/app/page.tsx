@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import HeroSection from "@/components/city/HeroSection";
 import FilterBar from "@/components/city/FilterBar";
 import CityGrid from "@/components/city/CityGrid";
-import { cities } from "@/data/cities";
+import { cities as staticCities } from "@/data/cities";
 import { filterCities, sortCities } from "@/lib/filters";
+import { getCities } from "@/lib/api";
 import type { CityData } from "@/types/city";
 import type { SortOption, RegionGroup, EnvironmentType } from "@/types/city";
 
@@ -17,11 +18,25 @@ const FILTER_CONFIG: Record<string, (city: CityData) => boolean> = {
 };
 
 export default function Home() {
+  const [cities, setCities] = useState<CityData[]>(staticCities);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
   const [region, setRegion] = useState<RegionGroup>("전체");
   const [environment, setEnvironment] = useState<EnvironmentType>("전체");
   const [sortOption, setSortOption] = useState<SortOption>("nomadScore");
+
+  useEffect(() => {
+    getCities()
+      .then((data) => {
+        setCities(data.cities);
+      })
+      .catch(() => {
+        // API 실패 시 정적 데이터 폴백
+        setCities(staticCities);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const filteredCities = useMemo(() => {
     let result = filterCities(cities, {
@@ -37,7 +52,7 @@ export default function Home() {
     result = sortCities(result, sortOption);
 
     return result;
-  }, [searchQuery, region, environment, sortOption, activeQuickFilter]);
+  }, [cities, searchQuery, region, environment, sortOption, activeQuickFilter]);
 
   const handleHeroSearch = (query: string) => {
     setSearchQuery(query);
@@ -50,6 +65,30 @@ export default function Home() {
   const handleQuickFilterClick = (filter: string) => {
     setActiveQuickFilter((prev) => (prev === filter ? null : filter));
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <HeroSection
+          searchValue=""
+          onSearch={() => {}}
+          onFilterClick={() => {}}
+          activeFilter={null}
+        />
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+            <div className="mt-2 h-5 w-32 animate-pulse rounded bg-muted" />
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-64 animate-pulse rounded-xl bg-muted" />
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
