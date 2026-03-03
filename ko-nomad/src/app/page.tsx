@@ -1,64 +1,97 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useMemo } from "react";
+import HeroSection from "@/components/city/HeroSection";
+import FilterBar from "@/components/city/FilterBar";
+import CityGrid from "@/components/city/CityGrid";
+import { cities } from "@/data/cities";
+import { filterCities, sortCities } from "@/lib/filters";
+import type { CityData } from "@/types/city";
+import type { SortOption, RegionGroup, EnvironmentType } from "@/types/city";
+
+const FILTER_CONFIG: Record<string, (city: CityData) => boolean> = {
+  "카페 작업": (city) => city.scores.cafeWork >= 4,
+  "바다 근처": (city) => city.environment === "해변",
+  "저렴한": (city) => city.monthlyCost <= 1200000,
+  "KTX 접근": (city) => city.scores.transport >= 4,
+};
 
 export default function Home() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
+  const [region, setRegion] = useState<RegionGroup>("전체");
+  const [environment, setEnvironment] = useState<EnvironmentType>("전체");
+  const [sortOption, setSortOption] = useState<SortOption>("nomadScore");
+
+  const filteredCities = useMemo(() => {
+    let result = filterCities(cities, {
+      search: searchQuery,
+      region,
+      environment,
+    });
+
+    if (activeQuickFilter && FILTER_CONFIG[activeQuickFilter]) {
+      result = result.filter(FILTER_CONFIG[activeQuickFilter]);
+    }
+
+    result = sortCities(result, sortOption);
+
+    return result;
+  }, [searchQuery, region, environment, sortOption, activeQuickFilter]);
+
+  const handleHeroSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleFilterBarSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleQuickFilterClick = (filter: string) => {
+    setActiveQuickFilter((prev) => (prev === filter ? null : filter));
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex min-h-screen flex-col">
+      <HeroSection
+        searchValue={searchQuery}
+        onSearch={handleHeroSearch}
+        onFilterClick={handleQuickFilterClick}
+        activeFilter={activeQuickFilter}
+      />
+
+      <FilterBar
+        search={searchQuery}
+        onSearchChange={handleFilterBarSearch}
+        region={region}
+        onRegionChange={setRegion}
+        environment={environment}
+        onEnvironmentChange={setEnvironment}
+        sortOption={sortOption}
+        onSortChange={setSortOption}
+        resultCount={filteredCities.length}
+      />
+
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">
+              인기 도시 랭킹
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {sortOption === "nomadScore" ? "노마드 점수 기준" : ""}
+              {sortOption === "cost_asc" ? "생활비 낮은순" : ""}
+              {sortOption === "cost_desc" ? "생활비 높은순" : ""}
+              {sortOption === "internet" ? "인터넷 속도순" : ""}
+              {sortOption === "reviewCount" ? "리뷰 많은순" : ""}
+              {sortOption === "likePercent" ? "추천율순" : ""}
+              {" · "}
+              {filteredCities.length}개 도시
+            </p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        <CityGrid cities={filteredCities} />
       </main>
     </div>
   );
