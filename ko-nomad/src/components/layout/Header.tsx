@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, ArrowLeftRight, Calculator, CloudSun } from "lucide-react";
 
 export default function Header() {
   return (
@@ -23,6 +23,24 @@ export default function Header() {
         </div>
 
         <nav className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/climate" className="flex items-center gap-1.5">
+              <CloudSun className="size-4" />
+              날씨
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/compare" className="flex items-center gap-1.5">
+              <ArrowLeftRight className="size-4" />
+              비교
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/calculator" className="flex items-center gap-1.5">
+              <Calculator className="size-4" />
+              생활비 계산기
+            </Link>
+          </Button>
           <Button variant="ghost" size="sm">
             로그인
           </Button>
