@@ -29,7 +29,7 @@ export default function CityDetailTabs({ city, reviews }: CityDetailTabsProps) {
       </TabsContent>
 
       <TabsContent value="reviews" className="mt-4">
-        <ReviewList reviews={reviews} />
+        <ReviewList reviews={reviews} citySlug={city.slug} />
       </TabsContent>
     </Tabs>
   );

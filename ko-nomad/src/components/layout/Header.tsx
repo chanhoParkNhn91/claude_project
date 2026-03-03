@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, ArrowLeftRight, Calculator, CloudSun } from "lucide-react";
+import { Search, ArrowLeftRight, Calculator, CloudSun, MapPin } from "lucide-react";
 
 export default function Header() {
   return (
@@ -23,6 +23,12 @@ export default function Header() {
         </div>
 
         <nav className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/spaces" className="flex items-center gap-1.5">
+              <MapPin className="size-4" />
+              작업공간
+            </Link>
+          </Button>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/climate" className="flex items-center gap-1.5">
               <CloudSun className="size-4" />
