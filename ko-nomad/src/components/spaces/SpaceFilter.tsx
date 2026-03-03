@@ -8,13 +8,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cities } from "@/data/cities";
+import type { CityData } from "@/types/city";
 import type { WorkSpace } from "@/data/spaces";
 
 export type SpaceType = "전체" | WorkSpace["type"];
 export type SpaceSortOption = "rating" | "wifiSpeed" | "reviewCount";
 
 interface SpaceFilterProps {
+  cities: CityData[];
   selectedCity: string;
   onCityChange: (city: string) => void;
   selectedType: SpaceType;
@@ -27,6 +28,7 @@ interface SpaceFilterProps {
 const SPACE_TYPES: SpaceType[] = ["전체", "카페", "코워킹", "도서관"];
 
 export default function SpaceFilter({
+  cities,
   selectedCity,
   onCityChange,
   selectedType,

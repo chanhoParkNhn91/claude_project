@@ -12,13 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cities } from "@/data/cities";
 import type { CityData } from "@/types/city";
 
 // 지역 그룹별 도시 분류
 const REGION_GROUPS = ["수도권", "강원", "충청", "전라", "경상", "제주"] as const;
 
 interface CitySelectorProps {
+  /** 도시 목록 데이터 */
+  cities: CityData[];
   /** 현재 선택된 도시 슬러그 배열 (최대 3개) */
   selectedSlugs: string[];
   /** 도시 추가 콜백 */
@@ -30,11 +31,12 @@ interface CitySelectorProps {
 }
 
 /** 선택된 도시의 CityData를 조회 */
-function findCity(slug: string): CityData | undefined {
+function findCity(cities: CityData[], slug: string): CityData | undefined {
   return cities.find((c) => c.slug === slug);
 }
 
 export default function CitySelector({
+  cities,
   selectedSlugs,
   onAdd,
   onRemove,
@@ -58,7 +60,7 @@ export default function CitySelector({
       <div className="flex flex-wrap items-center gap-3">
         {/* 선택된 도시 뱃지 */}
         {selectedSlugs.map((slug) => {
-          const city = findCity(slug);
+          const city = findCity(cities, slug);
           if (!city) return null;
           return (
             <Badge

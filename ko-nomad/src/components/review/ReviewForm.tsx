@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { addReview } from "@/lib/reviews";
+import { createReview } from "@/lib/api";
 import StarRating from "@/components/review/StarRating";
 import type { Review } from "@/types/city";
 
@@ -145,11 +145,12 @@ export default function ReviewForm({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (!validate()) return;
+  const [submitting, setSubmitting] = useState(false);
 
-    const review: Review = {
-      id: `user-${Date.now()}`,
+  const handleSubmit = async () => {
+    if (!validate() || submitting) return;
+
+    const reviewData = {
       citySlug,
       userName: nickname.trim(),
       userImage: "",
@@ -160,14 +161,20 @@ export default function ReviewForm({
       pros: pros.trim(),
       cons: cons.trim(),
       totalScore: averageScore(),
-      helpful: 0,
-      createdAt: new Date().toISOString().split("T")[0],
     };
 
-    addReview(review);
-    onReviewAdded();
-    resetForm();
-    onOpenChange(false);
+    setSubmitting(true);
+    try {
+      await createReview(reviewData);
+      onReviewAdded();
+      resetForm();
+      onOpenChange(false);
+    } catch {
+      // 에러 발생 시 사용자에게 알림
+      alert("리뷰 등록에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -464,8 +471,8 @@ export default function ReviewForm({
             >
               취소
             </Button>
-            <Button type="button" onClick={handleSubmit}>
-              리뷰 등록
+            <Button type="button" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? "등록 중..." : "리뷰 등록"}
             </Button>
           </div>
         </div>

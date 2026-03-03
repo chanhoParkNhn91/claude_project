@@ -13,16 +13,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { getReviews, getHelpfulVotes, toggleHelpful, getHelpfulCount } from "@/lib/reviews";
+import { getReviews as getReviewsApi, toggleHelpful as toggleHelpfulApi, createReview as createReviewApi } from "@/lib/api";
 import ReviewForm from "@/components/review/ReviewForm";
 import type { Review } from "@/types/city";
 
 interface ReviewListProps {
-  reviews: Review[];
   citySlug: string;
 }
 
-type ReviewSortOption = "latest" | "helpful" | "highScore";
+type ReviewSortOption = "latest" | "helpful" | "score";
 
 function StarRating({ score }: { score: number }) {
   const fullStars = Math.floor(score);
@@ -41,13 +40,11 @@ function StarRating({ score }: { score: number }) {
 function ReviewCard({
   review,
   onHelpfulClick,
-  isHelpfulVoted,
-  helpfulCount,
+  isHelpfulLoading,
 }: {
   review: Review;
   onHelpfulClick: (reviewId: string) => void;
-  isHelpfulVoted: boolean;
-  helpfulCount: number;
+  isHelpfulLoading: boolean;
 }) {
   return (
     <div className="space-y-3 py-4">
@@ -97,65 +94,80 @@ function ReviewCard({
         <Button
           variant="ghost"
           size="xs"
-          className={cn(
-            "text-xs text-muted-foreground",
-            isHelpfulVoted && "text-primary"
-          )}
+          className="text-xs text-muted-foreground"
           onClick={() => onHelpfulClick(review.id)}
+          disabled={isHelpfulLoading}
         >
-          {isHelpfulVoted ? "👍" : "👍"} 도움이 됐어요 ({helpfulCount})
+          👍 도움이 됐어요 ({review.helpful})
         </Button>
       </div>
     </div>
   );
 }
 
-export default function ReviewList({ reviews: initialReviews, citySlug }: ReviewListProps) {
-  const [allReviews, setAllReviews] = useState<Review[]>(initialReviews);
+export default function ReviewList({ citySlug }: ReviewListProps) {
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
   const [sortOption, setSortOption] = useState<ReviewSortOption>("latest");
-  const [helpfulVotes, setHelpfulVotes] = useState<Set<string>>(new Set());
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [helpfulLoading, setHelpfulLoading] = useState(false);
 
-  const loadReviews = useCallback(() => {
-    const reviews = getReviews(citySlug);
-    setAllReviews(reviews);
-  }, [citySlug]);
+  const loadReviews = useCallback(async (sort?: ReviewSortOption) => {
+    try {
+      const data = await getReviewsApi(citySlug, sort ?? sortOption);
+      setReviews(data);
+    } catch {
+      setReviews([]);
+    }
+  }, [citySlug, sortOption]);
 
   useEffect(() => {
-    loadReviews();
-    setHelpfulVotes(getHelpfulVotes());
+    setLoading(true);
+    loadReviews()
+      .finally(() => setLoading(false));
   }, [loadReviews]);
 
-  const handleHelpfulClick = (reviewId: string) => {
-    const result = toggleHelpful(reviewId);
-    setHelpfulVotes((prev) => {
-      const newVotes = new Set(prev);
-      if (result.voted) {
-        newVotes.add(reviewId);
-      } else {
-        newVotes.delete(reviewId);
-      }
-      return newVotes;
-    });
-    loadReviews();
+  const handleSortChange = (newSort: ReviewSortOption) => {
+    setSortOption(newSort);
+  };
+
+  const handleHelpfulClick = async (reviewId: string) => {
+    if (helpfulLoading) return;
+    setHelpfulLoading(true);
+    try {
+      await toggleHelpfulApi(Number(reviewId));
+      await loadReviews();
+    } catch {
+      // 에러 무시
+    } finally {
+      setHelpfulLoading(false);
+    }
   };
 
   const handleReviewAdded = () => {
     loadReviews();
   };
 
-  const sortedReviews = [...allReviews].sort((a, b) => {
-    switch (sortOption) {
-      case "latest":
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      case "helpful":
-        return getHelpfulCount(b) - getHelpfulCount(a);
-      case "highScore":
-        return b.totalScore - a.totalScore;
-      default:
-        return 0;
-    }
-  });
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">리뷰</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-full animate-pulse rounded bg-muted" />
+                <div className="h-3 w-3/4 animate-pulse rounded bg-muted" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -163,12 +175,12 @@ export default function ReviewList({ reviews: initialReviews, citySlug }: Review
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">
-              리뷰 ({allReviews.length}개)
+              리뷰 ({reviews.length}개)
             </CardTitle>
             <div className="flex items-center gap-2">
               <Select
                 value={sortOption}
-                onValueChange={(val) => setSortOption(val as ReviewSortOption)}
+                onValueChange={(val) => handleSortChange(val as ReviewSortOption)}
               >
                 <SelectTrigger className="w-[120px]" size="sm">
                   <SelectValue />
@@ -176,7 +188,7 @@ export default function ReviewList({ reviews: initialReviews, citySlug }: Review
                 <SelectContent>
                   <SelectItem value="latest">최신순</SelectItem>
                   <SelectItem value="helpful">도움순</SelectItem>
-                  <SelectItem value="highScore">높은 점수순</SelectItem>
+                  <SelectItem value="score">높은 점수순</SelectItem>
                 </SelectContent>
               </Select>
               <Button size="sm" onClick={() => setIsFormOpen(true)}>
@@ -186,7 +198,7 @@ export default function ReviewList({ reviews: initialReviews, citySlug }: Review
           </div>
         </CardHeader>
         <CardContent>
-          {sortedReviews.length === 0 ? (
+          {reviews.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-lg text-muted-foreground">
                 아직 리뷰가 없습니다
@@ -199,14 +211,13 @@ export default function ReviewList({ reviews: initialReviews, citySlug }: Review
               </Button>
             </div>
           ) : (
-            sortedReviews.map((review, idx) => (
+            reviews.map((review, idx) => (
               <div key={review.id}>
                 {idx > 0 && <Separator />}
                 <ReviewCard
                   review={review}
                   onHelpfulClick={handleHelpfulClick}
-                  isHelpfulVoted={helpfulVotes.has(review.id)}
-                  helpfulCount={getHelpfulCount(review)}
+                  isHelpfulLoading={helpfulLoading}
                 />
               </div>
             ))

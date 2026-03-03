@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { cities } from "@/data/cities";
+import { useState, useEffect, useMemo } from "react";
+import { cities as staticCities } from "@/data/cities";
+import { getCities } from "@/lib/api";
 import {
   climateData,
   getSeasonAverage,
@@ -20,12 +21,26 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import type { AirQualityFilter, SeasonFilter } from "@/components/climate/ClimateFilter";
+import type { CityData } from "@/types/city";
 
 export default function ClimatePage() {
+  const [cities, setCities] = useState<CityData[]>(staticCities);
+  const [loading, setLoading] = useState(true);
   const [tempRange, setTempRange] = useState<[number, number]>([10, 25]);
   const [airQuality, setAirQuality] = useState<AirQualityFilter>("any");
   const [season, setSeason] = useState<SeasonFilter>("spring");
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+
+  useEffect(() => {
+    getCities()
+      .then((data) => {
+        setCities(data.cities);
+      })
+      .catch(() => {
+        setCities(staticCities);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const filteredCities = useMemo(() => {
     return cities
@@ -59,14 +74,14 @@ export default function ClimatePage() {
         (
           item
         ): item is {
-          city: (typeof cities)[number];
+          city: CityData;
           seasonAvgTemp: number;
           seasonAvgAqi: number;
           seasonAvgRainfall: number;
         } => item !== null
       )
       .sort((a, b) => a.seasonAvgAqi - b.seasonAvgAqi);
-  }, [tempRange, airQuality, season]);
+  }, [cities, tempRange, airQuality, season]);
 
   const selectedCityData = useMemo(() => {
     if (!selectedCity) return null;
@@ -74,7 +89,7 @@ export default function ClimatePage() {
     const climate = getClimateForCity(selectedCity);
     if (!city || !climate) return null;
     return { city, climate };
-  }, [selectedCity]);
+  }, [selectedCity, cities]);
 
   const seasonLabel = {
     spring: "봄 (3~5월)",
@@ -82,6 +97,21 @@ export default function ClimatePage() {
     autumn: "가을 (9~11월)",
     winter: "겨울 (12~2월)",
   }[season];
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <div className="h-32 animate-pulse bg-muted" />
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+          <div className="space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col">

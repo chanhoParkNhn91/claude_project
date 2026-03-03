@@ -6,35 +6,64 @@ import { ArrowLeftRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CitySelector from "@/components/compare/CitySelector";
 import CompareTable from "@/components/compare/CompareTable";
-import { cities } from "@/data/cities";
+import { cities as staticCities } from "@/data/cities";
+import { getCities } from "@/lib/api";
 import type { CityData } from "@/types/city";
-
-/** URL 파라미터에서 도시 슬러그 배열 파싱 */
-function parseCitySlugs(param: string | null): string[] {
-  if (!param) return [];
-  const validSlugs = new Set(cities.map((c) => c.slug));
-  return param
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => validSlugs.has(s))
-    .slice(0, 3); // 최대 3개
-}
-
-/** 슬러그 배열로 도시 데이터 조회 */
-function getCityDataBySlugs(slugs: string[]): CityData[] {
-  return slugs
-    .map((slug) => cities.find((c) => c.slug === slug))
-    .filter((c): c is CityData => c !== undefined);
-}
 
 /** 비교 페이지 내부 컴포넌트 (useSearchParams 사용) */
 function CompareContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const [cities, setCities] = useState<CityData[]>(staticCities);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getCities()
+      .then((data) => {
+        setCities(data.cities);
+      })
+      .catch(() => {
+        setCities(staticCities);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  /** URL 파라미터에서 도시 슬러그 배열 파싱 */
+  const parseCitySlugs = useCallback(
+    (param: string | null): string[] => {
+      if (!param) return [];
+      const validSlugs = new Set(cities.map((c) => c.slug));
+      return param
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => validSlugs.has(s))
+        .slice(0, 3);
+    },
+    [cities]
+  );
+
+  /** 슬러그 배열로 도시 데이터 조회 */
+  const getCityDataBySlugs = useCallback(
+    (slugs: string[]): CityData[] => {
+      return slugs
+        .map((slug) => cities.find((c) => c.slug === slug))
+        .filter((c): c is CityData => c !== undefined);
+    },
+    [cities]
+  );
+
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>(() =>
     parseCitySlugs(searchParams.get("cities"))
   );
+
+  // cities가 API에서 로드되면 URL 파라미터 다시 파싱
+  useEffect(() => {
+    if (!loading) {
+      const parsed = parseCitySlugs(searchParams.get("cities"));
+      setSelectedSlugs(parsed);
+    }
+  }, [loading, parseCitySlugs, searchParams]);
 
   // URL 파라미터 동기화
   useEffect(() => {
@@ -52,7 +81,7 @@ function CompareContent() {
   // 선택된 도시 데이터
   const selectedCities = useMemo(
     () => getCityDataBySlugs(selectedSlugs),
-    [selectedSlugs]
+    [selectedSlugs, getCityDataBySlugs]
   );
 
   // 도시 추가
@@ -72,6 +101,28 @@ function CompareContent() {
   const handleClear = useCallback(() => {
     setSelectedSlugs([]);
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <div className="flex items-center gap-3">
+              <ArrowLeftRight className="size-7 text-[#FF6B6B]" />
+              <h1 className="text-3xl font-bold text-foreground">도시 비교</h1>
+            </div>
+            <p className="mt-2 text-muted-foreground">
+              데이터를 불러오는 중...
+            </p>
+          </div>
+          <div className="space-y-4">
+            <div className="h-32 animate-pulse rounded-xl bg-muted" />
+            <div className="h-64 animate-pulse rounded-xl bg-muted" />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -94,6 +145,7 @@ function CompareContent() {
           </CardHeader>
           <CardContent>
             <CitySelector
+              cities={cities}
               selectedSlugs={selectedSlugs}
               onAdd={handleAdd}
               onRemove={handleRemove}
